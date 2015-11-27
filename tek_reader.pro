@@ -13,18 +13,18 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp
+        source/mainwindow.cpp
 
-HEADERS  += mainwindow.h \
-    TekVisa.h \
-    visa.h \
-    visatype.h \
-    vpptype.h
+HEADERS  += headers/mainwindow.h \
+    headers/TekVisa.h \
+    headers/visa.h \
+    headers/visatype.h \
+    headers/vpptype.h
 
 FORMS    += mainwindow.ui
 
 
-win32: LIBS += -L$$PWD/ -ltkVISA32
+win32: LIBS += -L$$PWD/libs/ -ltkVISA32
 
 INCLUDEPATH += $$PWD/
 DEPENDPATH += $$PWD/
@@ -32,4 +32,4 @@ DEPENDPATH += $$PWD/
 RESOURCES += \
     res.qrc
 
-RC_FILE = app.rc
+RC_FILE = rc/app.rc

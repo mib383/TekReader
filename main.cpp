@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    QFile file(":/darkorange.css");
+    QFile file(":styles/darkorange.css");
     file.open(QFile::ReadOnly);
     QString styleSheet = QLatin1String(file.readAll());
     a.setStyleSheet(styleSheet);
