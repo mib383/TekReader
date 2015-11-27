@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>darkorange.css</file>
+        <file>icons/floppy.png</file>
+        <file>icons/folder_blue.png</file>
+        <file>icons/search.png</file>
+    </qresource>
+</RCC>
