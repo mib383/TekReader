@@ -1,9 +1,9 @@
-#include "mainwindow.h"
+#include "headers/mainwindow.h"
 #include "ui_mainwindow.h"
 
 #include <stdio.h>
 #include <memory.h>
-#include "visa.h"
+#include "headers/visa.h"
 #include <QDebug>
 #include <QTime>
 #include <QVector>
@@ -21,6 +21,11 @@ void MainWindow::onDataChanged(const QModelIndex& topLeft, const QModelIndex& bo
     calcALL();
 }
 
+void MainWindow::setButtonIcon(int frame)
+{
+    ui->btnRead->setIcon(QIcon(myMovie->currentPixmap()));
+}
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
@@ -29,7 +34,6 @@ MainWindow::MainWindow(QWidget *parent) :
     model(0,3,0)
 {
     ui->setupUi(this);
-
     QStringList headerLabels;
     headerLabels << "?" << "Name" << "Description";
     model.setHorizontalHeaderLabels(headerLabels);
@@ -48,10 +52,22 @@ MainWindow::MainWindow(QWidget *parent) :
 
     ui->btnBrowse->setIcon(QPixmap(":/icons/folder_blue.png"));
     ui->btnSearch->setIcon(QPixmap(":/icons/search.png"));
+
+    //ui->btnSearch->setMovie();
+
     ui->btnRead->setIcon(QPixmap(":/icons/floppy.png"));
+
+    //myMovie = new QMovie(":/icons/animatedFloppy.gif");
+    myMovie = new QMovie(":/icons/anim.gif");
+
+    //qDebug() << "fc:" << myMovie->frameCount();
+
+    connect(myMovie,SIGNAL(frameChanged(int)),this,SLOT(setButtonIcon(int)));
 
     QString path = sets.value("path").toString();
     ui->lblPathDisplay->setText(path);
+
+    calcALL();
 }
 
 MainWindow::~MainWindow()
@@ -82,9 +98,9 @@ void MainWindow::calcALL()
     QString desc, name;
 
     int max = -1;
+    int h,m,n;
     int allnum;
     //bool flag = false;
-
     for(int i = 0; i < model.rowCount(); i++)
     {
         desc = model.item(i, 2)->text();
@@ -94,8 +110,11 @@ void MainWindow::calcALL()
         {
             desc = name;
         }
+
         desc = desc.replace(QRegExp("[^a-zA-Z0-9]"),"_");
+
         QDir qdir(ui->lblPathDisplay->text() + "/" + desc);
+
         QString f = "ALL*";
         QStringList sl = qdir.entryList(QStringList(f));
 
@@ -103,17 +122,31 @@ void MainWindow::calcALL()
         foreach(QString s, sl)
         {
             //flag = true;
-            s = s.mid(3,4);
-            allnum = s.toInt();
+            QString tmp;
+            tmp = s.mid(3,4);
+            allnum = tmp.toInt();
             if(max < allnum)
+            {
                 max = allnum;
+
+                tmp = s.mid(17,2);
+                h = tmp.toInt();
+
+                tmp = s.mid(19,2);
+                m = tmp.toInt();
+                //full_str = s;
+            }
         }
 
     }
 
     //if(flag)
-    ALLnum = max + 1;
-    ui->lblALL->setText(QString("ALL%1").arg(ALLnum,4,10,QChar('0')));
+    ALLnum = max;
+
+    if(max > -1)
+        ui->lblALL->setText(QString("ALL%1 (%2:%3)").arg(ALLnum,4,10,QChar('0')).arg(h,2,10,QChar('0')).arg(m,2,10,QChar('0')));
+    else
+        ui->lblALL->setText("-");
 
     //return max;
     //QString path = path + "/" + name + "/ALL" + QString("%1").arg(allNum, 4, 10, QChar('0')) + "_" + datetime;
@@ -153,7 +186,7 @@ bool MainWindow::search()
         status = viRead(vi, (ViBuf) id, sizeof(id), &retCnt);
         if (status < VI_SUCCESS) goto error1;
 
-        log(QString("Found: ") + desc + "; " + id, QColor("green"));
+        //log(QString("Found: ") + desc + "; " + id, QColor("green"));
         addendDev(desc);
 
         viClose(vi);
@@ -170,7 +203,7 @@ error1:
         viClose(rm);
     }
 
-    addendDev("abcd");
+    //addendDev("abcd");
     //addendDev("efgh");
     return false;
 }
@@ -182,7 +215,15 @@ void MainWindow::searchSlot()
 
 void MainWindow::readSlot()
 {
+    //ui->btnRead->setDisabled(true);
+    myMovie->start();
     read();
+    //for(int i = 0; i < 4000000000; i++)
+    //    if(i%100000000 == 0)
+    //        QApplication::processEvents();
+
+    myMovie->stop();
+    ui->btnRead->setIcon(QPixmap(":/icons/floppy.png"));
 }
 
 void MainWindow::browseClick()
@@ -266,7 +307,7 @@ bool MainWindow::read()
             {
                 str = QString(desc);
             }
-            log(QString("     Reading data from ") + str + "...", QColor("green"));
+            //log(QString("     Reading data from ") + str + "...", QColor("green"));
             // for each channel...
             for(int j = 1; j < 5; j++)
             {
@@ -439,7 +480,7 @@ bool MainWindow::WriteWaveform(QString path, QString name, QString datetime, int
             stream << ",,," << QString("%1").arg(data[i]) << ", " << data[i+1] << "," << endl;
         }
         file.close();
-        log(QString("File for ") + name + " (channel " + QString::number(ch) + ") saved successfully", QColor("green"));
+        //log(QString("File for ") + name + " (channel " + QString::number(ch) + ") saved successfully", QColor("green"));
         return true;
     }
     else

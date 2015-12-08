@@ -4,7 +4,7 @@
   \brief This program is designed to reading data from multiple Tektronix oscilloscopes.
  */
 
-#include "mainwindow.h"
+#include "headers/mainwindow.h"
 #include <QApplication>
 #include <QFile>
 

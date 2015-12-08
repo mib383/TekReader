@@ -4,5 +4,6 @@
         <file>icons/folder_blue.png</file>
         <file>icons/search.png</file>
         <file>styles/darkorange.css</file>
+        <file>icons/anim.gif</file>
     </qresource>
 </RCC>

@@ -6,6 +6,7 @@
 #include <QMap>
 #include "visa.h"
 #include <QStandardItemModel>
+#include <QMovie>
 
 namespace Ui {
 class MainWindow;
@@ -24,6 +25,7 @@ public:
     ~MainWindow();
 
 private:
+    QMovie* myMovie;
     Ui::MainWindow *ui;
     QSettings sets; ///<settings object to save app settings via executions
     QVector<float> data; ///<data array to store reading data
@@ -42,6 +44,7 @@ public slots:
     void readSlot();
     void browseClick();
     void onDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight);
+    void setButtonIcon(int frame);
 };
 
 #endif // MAINWINDOW_H
