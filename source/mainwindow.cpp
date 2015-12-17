@@ -53,14 +53,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->btnBrowse->setIcon(QPixmap(":/icons/folder_blue.png"));
     ui->btnSearch->setIcon(QPixmap(":/icons/search.png"));
 
-    //ui->btnSearch->setMovie();
 
     ui->btnRead->setIcon(QPixmap(":/icons/floppy.png"));
+    ui->btnRead->setStyleSheet("QPushButton{background-color: QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0 #f0b7a1, stop: 0.5 #8c3310 , stop: 1 #f0b7a1)}");
 
-    //myMovie = new QMovie(":/icons/animatedFloppy.gif");
+
     myMovie = new QMovie(":/icons/anim.gif");
 
-    //qDebug() << "fc:" << myMovie->frameCount();
 
     connect(myMovie,SIGNAL(frameChanged(int)),this,SLOT(setButtonIcon(int)));
 
@@ -81,7 +80,7 @@ void MainWindow::addendDev(QString desc)
     i1->setCheckable(true);
     i1->setCheckState(Qt::Checked);
     i1->setEditable(false);
-    //i1->setFlags(Qt::ItemFlags);
+
     QStandardItem* i2 = new QStandardItem(sets.value(QString("keys/") + QString(desc)).toString());
     QStandardItem* i3 = new QStandardItem(desc);
     i3->setEditable(false);
@@ -100,7 +99,7 @@ void MainWindow::calcALL()
     int max = -1;
     int h,m,n;
     int allnum;
-    //bool flag = false;
+
     for(int i = 0; i < model.rowCount(); i++)
     {
         desc = model.item(i, 2)->text();
@@ -134,22 +133,19 @@ void MainWindow::calcALL()
 
                 tmp = s.mid(19,2);
                 m = tmp.toInt();
-                //full_str = s;
             }
         }
 
     }
 
-    //if(flag)
+
     ALLnum = max;
 
     if(max > -1)
         ui->lblALL->setText(QString("ALL%1 (%2:%3)").arg(ALLnum,4,10,QChar('0')).arg(h,2,10,QChar('0')).arg(m,2,10,QChar('0')));
     else
         ui->lblALL->setText("-");
-
-    //return max;
-    //QString path = path + "/" + name + "/ALL" + QString("%1").arg(allNum, 4, 10, QChar('0')) + "_" + datetime;
+    ALLnum++;
 }
 
 bool MainWindow::search()
@@ -202,9 +198,6 @@ error1:
     if (rm != VI_NULL) {
         viClose(rm);
     }
-
-    //addendDev("abcd");
-    //addendDev("efgh");
     return false;
 }
 
@@ -215,13 +208,8 @@ void MainWindow::searchSlot()
 
 void MainWindow::readSlot()
 {
-    //ui->btnRead->setDisabled(true);
     myMovie->start();
     read();
-    //for(int i = 0; i < 4000000000; i++)
-    //    if(i%100000000 == 0)
-    //        QApplication::processEvents();
-
     myMovie->stop();
     ui->btnRead->setIcon(QPixmap(":/icons/floppy.png"));
 }
@@ -485,7 +473,7 @@ bool MainWindow::WriteWaveform(QString path, QString name, QString datetime, int
     }
     else
     {
-        log("Unable to create file! File not saved!" + path + "/ch" + QString::number(ch) + ".csv", QColor("red"));
+        log("Unable to create file! File not saved! " + path + "/ch" + QString::number(ch) + ".csv", QColor("red"));
         return false;
     }
 }
