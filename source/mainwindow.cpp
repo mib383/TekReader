@@ -212,6 +212,7 @@ void MainWindow::readSlot()
     read();
     myMovie->stop();
     ui->btnRead->setIcon(QPixmap(":/icons/floppy.png"));
+    calcALL();
 }
 
 void MainWindow::browseClick()
