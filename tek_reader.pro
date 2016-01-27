@@ -33,3 +33,6 @@ RESOURCES += \
     res.qrc
 
 RC_FILE = rc/app.rc
+
+DISTFILES += \
+    README.md

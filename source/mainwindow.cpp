@@ -74,7 +74,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::addendDev(QString desc)
+void MainWindow::appendDev(QString desc)
 {
     QStandardItem* i1 = new QStandardItem(true);
     i1->setCheckable(true);
@@ -135,7 +135,6 @@ void MainWindow::calcALL()
                 m = tmp.toInt();
             }
         }
-
     }
 
 
@@ -183,7 +182,7 @@ bool MainWindow::search()
         if (status < VI_SUCCESS) goto error1;
 
         //log(QString("Found: ") + desc + "; " + id, QColor("green"));
-        addendDev(desc);
+        appendDev(desc);
 
         viClose(vi);
 
@@ -204,6 +203,7 @@ error1:
 void MainWindow::searchSlot()
 {
     search();
+    //appendDev("123");
 }
 
 void MainWindow::readSlot()

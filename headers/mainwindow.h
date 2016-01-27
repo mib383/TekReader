@@ -37,7 +37,7 @@ private:
     bool read();
     bool ReadWaveform(ViSession vi, int channel, QString name);
     bool WriteWaveform(QString path, QString name, QString datetime, int ch);
-    void addendDev(QString desc);
+    void appendDev(QString desc);
     void calcALL();
 public slots:
     void searchSlot();
