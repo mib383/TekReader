@@ -2,6 +2,7 @@
   \file
   \author mib383
   \brief This program is designed to reading data from multiple Tektronix oscilloscopes.
+
  */
 
 #include "headers/mainwindow.h"
