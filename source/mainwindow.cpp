@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <memory.h>
 #include "headers/visa.h"
 #include <QDebug>
@@ -17,12 +18,14 @@
 
 void MainWindow::onDataChanged(const QModelIndex& topLeft, const QModelIndex& bottomRight)
 {
+    Q_UNUSED(bottomRight);
     sets.setValue(QString("keys/") + model.item(topLeft.row(),2)->text(),topLeft.data().toString());
     calcALL();
 }
 
 void MainWindow::setButtonIcon(int frame)
 {
+    Q_UNUSED(frame);
     ui->btnRead->setIcon(QIcon(myMovie->currentPixmap()));
 }
 
@@ -97,7 +100,7 @@ void MainWindow::calcALL()
     QString desc, name;
 
     int max = -1;
-    int h,m,n;
+    int h,m;
     int allnum;
 
     for(int i = 0; i < model.rowCount(); i++)
@@ -146,22 +149,39 @@ void MainWindow::calcALL()
         ui->lblALL->setText("-");
     ALLnum++;
 }
+#ifndef QT_NO_DEBUG
+bool MainWindow::dSearch()
+{
+    ViChar		desc[256];
+    ViUInt32	itemCnt;
+    ViUInt32	i;
+
+    model.removeRows(0, model.rowCount());
+    itemCnt = 5;
+
+
+    for (i = 0; i < itemCnt; i++)
+    {
+        sprintf(desc, "dev::%lu", i);
+        appendDev(desc);
+    }
+    return true;
+}
+#endif
 
 bool MainWindow::search()
 {
     ViSession	rm = VI_NULL, vi = VI_NULL;
     ViStatus	status;
     ViChar		desc[256], id[256], buffer[256];
-    ViUInt32	retCnt, itemCnt;
+    ViUInt32	retCnt, itemCnt = 0;
     ViFindList	list;
     ViUInt32	i;
 
     model.removeRows(0, model.rowCount());
-
     // Open a default Session
     status = viOpenDefaultRM(&rm);
     if (status < VI_SUCCESS) goto error1;
-
     // Find all GPIB devices
     status = viFindRsrc(rm, (ViString)"USB?*INSTR", &list, &itemCnt, desc);
     if (status < VI_SUCCESS) goto error1;
@@ -202,14 +222,22 @@ error1:
 
 void MainWindow::searchSlot()
 {
+#ifdef QT_NO_DEBUG
     search();
+#else
+    dSearch();
+#endif
     //appendDev("123");
 }
 
 void MainWindow::readSlot()
 {
     myMovie->start();
+#ifdef QT_NO_DEBUG
     read();
+   #else
+    dRead();
+#endif
     myMovie->stop();
     ui->btnRead->setIcon(QPixmap(":/icons/floppy.png"));
     calcALL();
@@ -235,6 +263,60 @@ void MainWindow::log(QString s, QColor c)
     ui->txtLog->moveCursor (QTextCursor::End);
     QString str = QString("<font color=\"") + c.name(QColor::HexArgb) + "\">[" + QTime::currentTime().toString() + "] " + s + "</color> <br>";
     ui->txtLog->insertHtml (str);
+}
+
+bool MainWindow::dRead()
+{
+    ViSession	vi = VI_NULL;
+    ViChar		desc[256];
+    ViUInt32	itemCnt;
+    ViUInt32	i;
+
+    itemCnt = 5;
+
+    calcALL();
+
+    for (i = 0; i < itemCnt; i++)
+    {
+        sprintf(desc, "dev::%lu", i);
+
+        if(model.item(model.findItems(QString(desc),Qt::MatchExactly,2)[0]->row(),0)->checkState() == Qt::Checked)//i2 > -1 && devList.CheckedStatus[i2] == Qt::Checked)
+        {
+            QString datetime = QDateTime::currentDateTime().toString("yyyyMMdd_hhmm");
+            QString str;
+            if(sets.value(QString("keys/") + desc).toString() != "")
+            {
+                str = sets.value(QString("keys/") + desc).toString();
+            }
+            else
+            {
+                str = QString(desc);
+            }
+            //log(QString("     Reading data from ") + str + "...", QColor("green"));
+            // for each channel...
+            QVector<float> chan[4];
+            QVector<float> offsets(4);
+            QVector<float> mults(4);
+            QVector<bool> flags(4);
+            float SR;
+            for(int j = 1; j < 5; j++)
+            {
+                if(dReadWaveform(vi, j, str, chan[j-1],offsets[j-1],mults[j-1],SR))
+                {
+                    flags[j - 1] = true;
+                    WriteWaveform(ui->lblPathDisplay->text(), str, datetime, j);
+                }
+                else
+                {
+                    flags[j-1] = false;
+                }
+
+                QApplication::processEvents();
+            }
+            MakeGnuplot(ui->lblPathDisplay->text(), str, flags, chan, offsets, mults, SR);
+        }
+    }
+    return true;
 }
 
 bool MainWindow::read()
@@ -317,7 +399,7 @@ bool MainWindow::read()
 
                 QApplication::processEvents();
             }
-            MakeGnuplot();
+            MakeGnuplot(ui->lblPathDisplay->text(), str, flags, chan, offsets, mults, SR);
         }
 
         // We're done with this device so close it
@@ -346,7 +428,7 @@ error:
     return false;
 }
 
-bool MainWindow::MakeGnuplot(QVector<bool> flags, QVector<float> vecs[4], QVector offsets, QVector mults, float sr)
+bool MainWindow::MakeGnuplot(QString path, QString name, QVector<bool> flags, QVector<float> vecs[4], QVector<float> offsets, QVector<float> mults, float sr)
 {
     name = name.replace(QRegExp("[^a-zA-Z0-9]"),"_");
     QDir qdir(path + "/" + name);
@@ -362,30 +444,85 @@ bool MainWindow::MakeGnuplot(QVector<bool> flags, QVector<float> vecs[4], QVecto
         }
     }
     QString NAME = path + "/"+"all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".dat";
+    QString FigName = path + "/"+"all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".png";
     QFile file(NAME);
     if ( file.open(QIODevice::ReadWrite) )
     {
         QTextStream stream(&file);
 
-        int cnt = data.count();
         for(int i = 0; i < 2500; i++)
         {
-            stream << i << "\t"
-                   << flags[0]?QString("%1").arg(vecs[0][i]):0 << "\t"
-                   << flags[0]?QString("%1").arg(vecs[1][i]):0 << "\t"
-                   << flags[0]?QString("%1").arg(vecs[2][i]):0 << "\t"
-                   << flags[0]?QString("%1").arg(vecs[3][i]):0 << "\t"
+            stream << QString("%1").arg(i) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[0][i] - offsets[0]):0) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[1][i] - offsets[1]):0) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[2][i] - offsets[2]):0) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[3][i] - offsets[3]):0) << "\t"
                                                     << endl;
         }
         file.close();
+        QString gnuplot_cmd;
+        gnuplot_cmd = QString("gnuplot -persist -e \"set term png; set output \\\"")
+                    + FigName
+                    + "\\\";"
+                    + " set title \\\"" + QString("%1").arg(sr) + "\\\";"
+                    + " plot \\\""
+                    + NAME
+                    + "\\\" using 1:2 title \\\"" + QString("%1 V").arg(mults[0])+ "\\\" with lines,\\\""
+                    + NAME
+                    + "\\\" using 1:3 title \\\"" + QString("%1 V").arg(mults[1])+ "\\\" with lines,\\\""
+                    + NAME
+                    + "\\\" using 1:4 title \\\"" + QString("%1 V").arg(mults[2])+ "\\\" with lines,\\\""
+                    + NAME
+                    + "\\\" using 1:5 title \\\"" + QString("%1 V").arg(mults[3])+ "\\\" with lines\"";
+
+        system(gnuplot_cmd.toStdString().c_str());
         //log(QString("File for ") + name + " (channel " + QString::number(ch) + ") saved successfully", QColor("green"));
         return true;
     }
     else
     {
-        log("Unable to create file! File not saved! " + path + "/ch" + QString::number(ch) + ".csv", QColor("red"));
+        log("Unable to create file! File not saved! " + NAME + ".dat", QColor("red"));
         return false;
     }
+}
+
+bool MainWindow::dReadWaveform(ViSession vi, int channel, QString name, QVector<float>& all_chan, float& OFFSET, float& MULT, float& SR)
+{
+    Q_UNUSED(vi);
+    Q_UNUSED(name);
+    float		yoffset, ymult, horscale, sampling_rate;
+    long reclen;
+
+    int iv = 0; // счетчик для вектора
+    int jv = 0; // счетчик для считанного буфера
+
+    ViUInt32 cnt;
+    ymult = channel * 10;
+
+    yoffset = channel * 10;
+
+
+    horscale = channel * 10;
+    reclen = 2500;
+    sampling_rate = horscale * 10 / reclen;
+    cnt = 2506;
+    jv+=6;// пропускаем служебную информацию
+    data.clear();
+    float res;
+    for(ViUInt32 k = jv; k < cnt; k++)
+    {
+        data.append(sampling_rate * iv);
+        res = (signed char)(rand()%256 - 128);//buf[k];
+        all_chan.append(res);
+        res -= yoffset;
+        res *= ymult;
+        data.append(res);
+        iv++;
+    }
+    OFFSET = yoffset;
+    MULT = ymult;
+    SR = sampling_rate;
+    return true;
 }
 
 bool MainWindow::ReadWaveform(ViSession vi, int channel, QString name, QVector<float>& all_chan, float& OFFSET, float& MULT, float& SR)
