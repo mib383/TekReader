@@ -10,4 +10,5 @@ TekReader is program for reading data from multiple Tektronix oscilloscopes conn
  - Qt
  - .exe compressed with upx
  - depends on TekVISA libraty
+ - depends on gnuplot (gnuplot.exe must be observable from system path variable)
  - linked statically
