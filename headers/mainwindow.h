@@ -35,10 +35,11 @@ private:
     bool search();
     void log(QString s, QColor c);
     bool read();
-    bool ReadWaveform(ViSession vi, int channel, QString name);
+    //bool ReadWaveform(ViSession vi, int channel, QString name);
     bool WriteWaveform(QString path, QString name, QString datetime, int ch);
     void appendDev(QString desc);
     void calcALL();
+    bool ReadWaveform(ViSession vi, int channel, QString name, QVector &all_chan, float &OFFSET, float &MULT, float &SR);
 public slots:
     void searchSlot();
     void readSlot();

@@ -298,13 +298,26 @@ bool MainWindow::read()
             }
             //log(QString("     Reading data from ") + str + "...", QColor("green"));
             // for each channel...
+            QVector<float> chan[4];
+            QVector<float> offsets(4);
+            QVector<float> mults(4);
+            QVector<bool> flags(4);
+            float SR;
             for(int j = 1; j < 5; j++)
             {
-                if(ReadWaveform(vi, j, str))
+                if(ReadWaveform(vi, j, str, chan[j-1],offsets[j-1],mults[j-1],SR))
+                {
+                    flags[j - 1] = true;
                     WriteWaveform(ui->lblPathDisplay->text(), str, datetime, j);
+                }
+                else
+                {
+                    flags[j-1] = false;
+                }
+
                 QApplication::processEvents();
             }
-
+            MakeGnuplot();
         }
 
         // We're done with this device so close it
@@ -333,7 +346,49 @@ error:
     return false;
 }
 
-bool MainWindow::ReadWaveform(ViSession vi, int channel, QString name)
+bool MainWindow::MakeGnuplot(QVector<bool> flags, QVector<float> vecs[4], QVector offsets, QVector mults, float sr)
+{
+    name = name.replace(QRegExp("[^a-zA-Z0-9]"),"_");
+    QDir qdir(path + "/" + name);
+    path = path + "/" + name;// + "/ALL" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + "_" + datetime;
+    if(!qdir.mkpath(path))
+    {
+        path = QApplication::applicationDirPath() + "/" + name;// + "/ALL" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + "_" + datetime;
+        log("Unable to create directory. Trying to save file in app folder...", QColor("yellow"));
+        if(!qdir.mkpath(path))
+        {
+            log("Unable to create directory in app folder! File not saved!", QColor("red"));
+            return false;
+        }
+    }
+    QString NAME = path + "/"+"all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".dat";
+    QFile file(NAME);
+    if ( file.open(QIODevice::ReadWrite) )
+    {
+        QTextStream stream(&file);
+
+        int cnt = data.count();
+        for(int i = 0; i < 2500; i++)
+        {
+            stream << i << "\t"
+                   << flags[0]?QString("%1").arg(vecs[0][i]):0 << "\t"
+                   << flags[0]?QString("%1").arg(vecs[1][i]):0 << "\t"
+                   << flags[0]?QString("%1").arg(vecs[2][i]):0 << "\t"
+                   << flags[0]?QString("%1").arg(vecs[3][i]):0 << "\t"
+                                                    << endl;
+        }
+        file.close();
+        //log(QString("File for ") + name + " (channel " + QString::number(ch) + ") saved successfully", QColor("green"));
+        return true;
+    }
+    else
+    {
+        log("Unable to create file! File not saved! " + path + "/ch" + QString::number(ch) + ".csv", QColor("red"));
+        return false;
+    }
+}
+
+bool MainWindow::ReadWaveform(ViSession vi, int channel, QString name, QVector<float>& all_chan, float& OFFSET, float& MULT, float& SR)
 {
     ViStatus	status;
     float		yoffset, ymult, horscale, sampling_rate;
@@ -417,11 +472,15 @@ bool MainWindow::ReadWaveform(ViSession vi, int channel, QString name)
     {
         data.append(sampling_rate * iv);
         res = (signed char)buf[k];
+        all_chan.append(res);
         res -= yoffset;
         res *= ymult;
         data.append(res);
         iv++;
     }
+    OFFSET = yoffset;
+    MULT = ymult;
+    SR = sampling_rate;
     return true;
 
 error:
@@ -454,7 +513,8 @@ bool MainWindow::WriteWaveform(QString path, QString name, QString datetime, int
         }
     }
 
-    QFile file(path + "/ch" + QString::number(ch) + ".csv");
+    //QFile file(path + "/ch" + QString::number(ch) + ".csv");
+    QFile file(path + "/" + name + "_" + "all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + "_ch" + QString::number(ch) + ".csv");
     if ( file.open(QIODevice::ReadWrite) )
     {
         QTextStream stream(&file);
