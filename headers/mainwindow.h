@@ -40,10 +40,11 @@ private:
     void appendDev(QString desc);
     void calcALL();
     bool ReadWaveform(ViSession vi, int channel, QString name, QVector<float> &all_chan, float &OFFSET, float &MULT, float &SR);
-    bool MakeGnuplot(QString path, QString name, QVector<bool> flags, QVector<float> vecs[], QVector<float> offsets, QVector<float> mults, float sr);
+    bool MakeGnuplot(QString path, QString name, QVector<bool> flags, QVector<float> vecs[], QVector<float> offsets, QVector<float> mults, float sr, QString datetime);
     bool dSearch();
     bool dReadWaveform(ViSession vi, int channel, QString name, QVector<float> &all_chan, float &OFFSET, float &MULT, float &SR);
     bool dRead();
+    QString toStringSuffix(float x);
 public slots:
     void searchSlot();
     void readSlot();

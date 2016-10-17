@@ -313,7 +313,7 @@ bool MainWindow::dRead()
 
                 QApplication::processEvents();
             }
-            MakeGnuplot(ui->lblPathDisplay->text(), str, flags, chan, offsets, mults, SR);
+            MakeGnuplot(ui->lblPathDisplay->text(), str, flags, chan, offsets, mults, SR, datetime);
         }
     }
     return true;
@@ -399,7 +399,7 @@ bool MainWindow::read()
 
                 QApplication::processEvents();
             }
-            MakeGnuplot(ui->lblPathDisplay->text(), str, flags, chan, offsets, mults, SR);
+            MakeGnuplot(ui->lblPathDisplay->text(), str, flags, chan, offsets, mults, SR,datetime);
         }
 
         // We're done with this device so close it
@@ -428,7 +428,7 @@ error:
     return false;
 }
 
-bool MainWindow::MakeGnuplot(QString path, QString name, QVector<bool> flags, QVector<float> vecs[4], QVector<float> offsets, QVector<float> mults, float sr)
+bool MainWindow::MakeGnuplot(QString path, QString name, QVector<bool> flags, QVector<float> vecs[4], QVector<float> offsets, QVector<float> mults, float sr,QString datetime)
 {
     name = name.replace(QRegExp("[^a-zA-Z0-9]"),"_");
     QDir qdir(path + "/" + name);
@@ -443,8 +443,8 @@ bool MainWindow::MakeGnuplot(QString path, QString name, QVector<bool> flags, QV
             return false;
         }
     }
-    QString NAME = path + "/"+"all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".dat";
-    QString FigName = path + "/"+"all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".png";
+    QString NAME = path + "/"+name + "_all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".dat";
+    QString FigName = path + "/"+name +"_all" + QString("%1").arg(ALLnum, 4, 10, QChar('0')) + ".png";
     QFile file(NAME);
     if ( file.open(QIODevice::ReadWrite) )
     {
@@ -452,29 +452,44 @@ bool MainWindow::MakeGnuplot(QString path, QString name, QVector<bool> flags, QV
 
         for(int i = 0; i < 2500; i++)
         {
-            stream << QString("%1").arg(i) << "\t"
-                   << (flags[0]?QString("%1").arg(vecs[0][i] - offsets[0]):0) << "\t"
-                   << (flags[0]?QString("%1").arg(vecs[1][i] - offsets[1]):0) << "\t"
-                   << (flags[0]?QString("%1").arg(vecs[2][i] - offsets[2]):0) << "\t"
-                   << (flags[0]?QString("%1").arg(vecs[3][i] - offsets[3]):0) << "\t"
+            stream << QString("%1").arg(sr * i) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[0][i]/* - offsets[0]*/):0) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[1][i]/* - offsets[1]*/):0) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[2][i]/* - offsets[2]*/):0) << "\t"
+                   << (flags[0]?QString("%1").arg(vecs[3][i]/* - offsets[3]*/):0) << "\t"
                                                     << endl;
         }
         file.close();
         QString gnuplot_cmd;
-        gnuplot_cmd = QString("gnuplot -persist -e \"set term png; set output \\\"")
+        /*NAME = path+"/all0000.dat";
+        sr = 4e-8;
+        mults[0] = 0.008;
+        mults[1] = 0.004;
+        mults[2] = 0.0002;
+        mults[3] = 0.02;*/
+        gnuplot_cmd = QString("gnuplot -persist -e \"set term png background rgb 'black'; set output \\\"")
                     + FigName
-                    + "\\\";"
-                    + " set title \\\"" + QString("%1").arg(sr) + "\\\";"
+                    + "\\\"; "
+                    + "set border lw 2 lc rgb 'white'; "
+                    + "set grid xtics ytics ls 3 lw 1 lc rgb 'gray'; "
+                    + "set key outside center bottom Left reverse box lw 2 lc rgb 'white' maxcols 2 maxrows 2 textcolor rgb 'white'; "
+                    + "set xlabel \\\"" + toStringSuffix(sr*250) + "s\\\" textcolor rgb 'white';"
+                    + "set xrange [0:" + QString("%1").arg(sr*2500) + "];"
+                    + "set ylabel \\\"" + "" + "\\\" textcolor rgb 'white';"
+                    + "set yrange [-4:4];"
+                    + "set xtics " + QString("%1").arg(sr*250) + " textcolor rgb 'white'; set xtics format \\\"%.1te%.1S\\\";"
+                    + "set ytics 1; set ytics format \\\" \\\";"
+                    + " set title \\\""+ name + "\\nall" + QString("%1 \\ndate/time:").arg(ALLnum, 4, 10, QChar('0')) + datetime/*QString("%1").arg(sr)*/ + "\\\" noenhanced textcolor rgb 'white';"
                     + " plot \\\""
                     + NAME
-                    + "\\\" using 1:2 title \\\"" + QString("%1 V").arg(mults[0])+ "\\\" with lines,\\\""
+                    + "\\\" using 1:($2/25.6) title \\\"ch1: " + toStringSuffix(mults[0]*25)+ "V\\\" with lines lw 2 lc rgb 'yellow',\\\""
                     + NAME
-                    + "\\\" using 1:3 title \\\"" + QString("%1 V").arg(mults[1])+ "\\\" with lines,\\\""
+                    + "\\\" using 1:($3/25.6) title \\\"ch2: " + toStringSuffix(mults[1]*25)+ "V\\\" with lines lw 2 lc rgb 'cyan',\\\""
                     + NAME
-                    + "\\\" using 1:4 title \\\"" + QString("%1 V").arg(mults[2])+ "\\\" with lines,\\\""
+                    + "\\\" using 1:($4/25.6) title \\\"ch3: " + toStringSuffix(mults[2]*25)+ "V\\\" with lines lw 2 lc rgb 'dark-violet',\\\""
                     + NAME
-                    + "\\\" using 1:5 title \\\"" + QString("%1 V").arg(mults[3])+ "\\\" with lines\"";
-
+                    + "\\\" using 1:($5/25.6) title \\\"ch4: " + toStringSuffix(mults[3]*25)+ "V\\\" with lines lw 2 lc rgb 'green'\"";
+        //qDebug() << gnuplot_cmd << "\n";
         system(gnuplot_cmd.toStdString().c_str());
         //log(QString("File for ") + name + " (channel " + QString::number(ch) + ") saved successfully", QColor("green"));
         return true;
@@ -484,6 +499,21 @@ bool MainWindow::MakeGnuplot(QString path, QString name, QVector<bool> flags, QV
         log("Unable to create file! File not saved! " + NAME + ".dat", QColor("red"));
         return false;
     }
+}
+
+QString MainWindow::toStringSuffix(float x)
+{
+    if(x >= 1e-9 && x < 1e-6)
+        return QString("%1n").arg(x*1e9,0,'f',1);
+    if(x >= 1e-6 && x < 1e-3)
+        return QString("%1u").arg(x*1e6,0,'f',1);
+    if(x >= 1e-3 && x < 1e0)
+        return QString("%1m").arg(x*1e3,0,'f',1);
+    if(x >= 1e0 && x < 1e3)
+        return QString("%1").arg(x*1e0,0,'f',1);
+    if(x >= 1e3 && x < 1e6)
+        return QString("%1k").arg(x*1e-3,0,'f',1);
+    return QString("0");
 }
 
 bool MainWindow::dReadWaveform(ViSession vi, int channel, QString name, QVector<float>& all_chan, float& OFFSET, float& MULT, float& SR)
